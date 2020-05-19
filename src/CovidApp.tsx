@@ -1,9 +1,9 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationState } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Font from 'expo-font';
 import { Header, Root, View } from 'native-base';
-import React, { Component } from 'react';
+import React, { Component, RefObject } from 'react';
 import { Dimensions, StatusBar } from 'react-native';
 
 import { colors } from '../theme/colors';
@@ -19,7 +19,6 @@ import HealthWorkerExposureScreen from './features/assessment/HealthWorkerExposu
 import HowYouFeelScreen from './features/assessment/HowYouFeelScreen';
 import LevelOfIsolationScreen from './features/assessment/LevelOfIsolationScreen';
 import ProfileBackDateScreen from './features/assessment/ProfileBackDateScreen';
-import StartAssessmentScreen from './features/assessment/StartAssessment';
 import TreatmentOtherScreen from './features/assessment/TreatmentOtherScreen';
 import TreatmentSelectionScreen from './features/assessment/TreatmentSelectionScreen';
 import WhereAreYouScreen from './features/assessment/WhereAreYouScreen';
@@ -50,46 +49,97 @@ import BeforeWeStartUS from './features/register/us/BeforeWeStartUS';
 import { NursesConsentUSScreen } from './features/register/us/NursesConsentUS';
 import { PrivacyPolicyUSScreen } from './features/register/us/PrivacyPolicyUSScreen';
 import TermsOfUseUSScreen from './features/register/us/TermsOfUseUSScreen';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import Analytics from './core/Analytics';
 
 const Stack = createStackNavigator<ScreenParamList>();
 const Drawer = createDrawerNavigator();
 
 class State {
-  fontLoaded: boolean;
+  isLoaded: boolean;
+  isOnline: boolean;
+  isApiOnline: boolean;
 }
 
-export default class ZoeApp extends Component<object, State> {
-  state = new State();
+const initialState = {
+  isLoaded: false,
+  isOnline: true,
+  isApiOnline: true,
+};
+
+const getCurrentRouteName = (navigationState: NavigationState): string | null => {
+  if (!navigationState) return null;
+
+  const route = navigationState.routes[navigationState.index];
+  if (route.state) {
+    // Nested navigators
+    // @ts-ignore
+    return getCurrentRouteName(route.state);
+  }
+  return route.name;
+};
+
+export default class CovidApp extends Component<object, State> {
+  navigationRef: RefObject<NavigationState>;
+  currentRouteName: string | null;
+
+  constructor(props: object) {
+    super(props);
+    this.state = initialState;
+    this.navigationRef = React.createRef();
+    this.currentRouteName = '';
+    this.handleStateChange = this.handleStateChange.bind(this);
+  }
 
   async componentDidMount() {
     await Font.loadAsync({
       Roboto: require('native-base/Fonts/Roboto.ttf'),
       Roboto_medium: require('native-base/Fonts/Roboto_medium.ttf'),
     });
+    this.setState({ isLoaded: true });
 
-    this.setState({ fontLoaded: true });
+    // Store the RouteName
+    // @ts-ignore
+    const state = this.navigationRef.current?.getRootState();
+    this.currentRouteName = getCurrentRouteName(state);
+  }
+
+  handleStateChange(state: NavigationState | undefined) {
+    if (!state) return;
+
+    const previousRouteName = this.currentRouteName;
+    const newRouteName = getCurrentRouteName(state);
+
+    if (newRouteName) {
+      if (previousRouteName !== newRouteName) {
+        Analytics.trackScreenView(newRouteName);
+      }
+      this.currentRouteName = newRouteName;
+    }
   }
 
   render() {
-    if (!this.state.fontLoaded) return <View />;
+    if (!this.state.isLoaded) return <View style={{ flex: 1, backgroundColor: colors.predict }} />;
 
     return (
-      <Root>
-        <Header style={{ display: 'none' }}>
-          <StatusBar backgroundColor={colors.white} barStyle="dark-content" />
-        </Header>
+      <SafeAreaProvider>
+        <Root>
+          <Header style={{ display: 'none' }}>
+            <StatusBar backgroundColor={colors.white} barStyle="dark-content" />
+          </Header>
 
-        <NavigationContainer>
-          <Drawer.Navigator
-            drawerContent={(props) => <DrawerMenu {...props} />}
-            screenOptions={{ swipeEnabled: false }}
-            drawerStyle={{
-              width: Dimensions.get('screen').width,
-            }}>
-            <Drawer.Screen name="Main" component={this.mainNavStack} />
-          </Drawer.Navigator>
-        </NavigationContainer>
-      </Root>
+          <NavigationContainer ref={this.navigationRef as any} onStateChange={this.handleStateChange}>
+            <Drawer.Navigator
+              drawerContent={(props) => <DrawerMenu {...props} />}
+              screenOptions={{ swipeEnabled: false }}
+              drawerStyle={{
+                width: Dimensions.get('screen').width,
+              }}>
+              <Drawer.Screen name="Main" component={this.mainNavStack} />
+            </Drawer.Navigator>
+          </NavigationContainer>
+        </Root>
+      </SafeAreaProvider>
     );
   }
 
@@ -142,7 +192,6 @@ export default class ZoeApp extends Component<object, State> {
         <Stack.Screen name="YourHealth" component={YourHealthScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AboutYou" component={AboutYouScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PreviousExposure" component={PreviousExposureScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="StartAssessment" component={StartAssessmentScreen} options={{ headerShown: false }} />
         <Stack.Screen
           name="HealthWorkerExposure"
           component={HealthWorkerExposureScreen}
