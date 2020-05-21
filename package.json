@@ -9,6 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:updateSnapshots": "jest -u",
+    "test:i18n": "ts-node ./scripts/i18n-check-locale.ts",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "prettier": "prettier --check 'src/**/*.(js|jsx|ts|tsx)'",
@@ -91,6 +92,11 @@
     "typescript": "~3.7.0"
   },
   "jest": {
+    "moduleNameMapper": {
+      "^@assets/(.*)$": "<rootDir>/assets/$1",
+      "^@theme/(.*)$": "<rootDir>/theme/$1",
+      "^@covid/(.*)$": "<rootDir>/src/$1"
+    },
     "preset": "jest-expo-enzyme",
     "globals": {
       "ts-jest": {
@@ -106,11 +112,6 @@
     "transformIgnorePatterns": [
       "node_modules/(?!(jest-)?react-native|react-clone-referenced-element|@react-native-community|expo(nent)?|@expo(nent)?/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|@sentry/.*)"
     ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm test"
-    }
   },
   "private": true
 }

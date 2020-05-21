@@ -1,6 +1,5 @@
 import { AxiosResponse } from 'axios';
 import * as Localization from 'expo-localization';
-import moment from 'moment';
 
 import { isAndroid } from '../utils/platform';
 import i18n from '../../locale/i18n';
@@ -8,6 +7,7 @@ import { AvatarName } from '../../utils/avatar';
 import { AsyncStorageService } from '../AsyncStorageService';
 import { getCountryConfig, ConfigType } from '../Config';
 import { UserNotFoundException } from '../Exception';
+import { getDaysAgo } from '../../utils/datetime';
 import { getInitialPatientState, PatientStateType, PatientProfile } from '../patient/PatientState';
 import { ApiClientBase } from './ApiClientBase';
 import {
@@ -19,16 +19,16 @@ import {
   PatientInfosRequest,
   PiiRequest,
   StartupInfo,
-  TokenInfoRequest,
-  TokenInfoResponse,
   UserResponse,
 } from './dto/UserAPIContracts';
 import { camelizeKeys } from './utils';
 import { handleServiceError } from '../ApiServiceErrors';
+import { cleanIntegerVal } from '../utils/number';
 
 const ASSESSMENT_VERSION = '1.4.0'; // TODO: Wire this to something automatic.
 const PATIENT_VERSION = '1.4.1'; // TODO: Wire this to something automatic.
 const MAX_DISPLAY_REPORT_FOR_OTHER_PROMPT = 3;
+const FREQUENCY_TO_ASK_ISOLATION_QUESTION = 7;
 
 // Attempt to split UserService into discrete service interfaces, which means:
 // TODO: Split into separate self-contained services
@@ -68,10 +68,6 @@ export interface IAssessmentService {
   updateAssessment(assessmentId: string, assessment: Partial<AssessmentInfosRequest>): Promise<any>;
 }
 
-export interface IPushTokenService {
-  savePushToken(pushToken: string): Promise<any>;
-}
-
 export interface ILocalisationService {
   setUserCountry(countryCode: string): void;
   initCountryConfig(countryCode: string): void;
@@ -97,7 +93,6 @@ export default class UserService extends ApiClientBase
     IConsentService,
     IPatientService,
     IAssessmentService,
-    IPushTokenService,
     ILocalisationService,
     IDontKnowService {
   public static userCountry = 'US';
@@ -249,6 +244,12 @@ export default class UserService extends ApiClientBase
     return null;
   }
 
+  static shouldAskLevelOfIsolation(dateLastAsked: Date | null): boolean {
+    if (!dateLastAsked) return true;
+
+    return getDaysAgo(dateLastAsked) >= FREQUENCY_TO_ASK_ISOLATION_QUESTION;
+  }
+
   public async updatePatientState(
     patientState: PatientStateType,
     patient: PatientInfosRequest
@@ -297,13 +298,7 @@ export default class UserService extends ApiClientBase
       !!patient.ht_pfnts ||
       !!patient.ht_other;
 
-    // Last asked level_of_isolation a week or more ago, or never asked
-    const lastAskedLevelOfIsolation = patient.last_asked_level_of_isolation;
-    let shouldAskLevelOfIsolation = !lastAskedLevelOfIsolation;
-    if (lastAskedLevelOfIsolation) {
-      const lastAsked = moment(lastAskedLevelOfIsolation);
-      shouldAskLevelOfIsolation = lastAsked.diff(moment(), 'days') >= 7;
-    }
+    const shouldAskLevelOfIsolation = UserService.shouldAskLevelOfIsolation(patient.last_asked_level_of_isolation);
 
     // Decide whether patient needs to answer YourStudy questions
     const consent = await this.getConsentSigned();
@@ -392,15 +387,6 @@ export default class UserService extends ApiClientBase
     return this.client.patch<AssessmentResponse>(`/assessments/${assessmentId}/`, assessment);
   }
 
-  public async savePushToken(pushToken: string) {
-    const tokenDoc = {
-      token: pushToken,
-      active: true,
-      platform: isAndroid ? 'ANDROID' : 'IOS',
-    } as TokenInfoRequest;
-    return this.client.post<TokenInfoResponse>(`/tokens/`, tokenDoc);
-  }
-
   async getConsentSigned(): Promise<Consent | null> {
     const consent: string | null = await AsyncStorageService.getConsentSigned();
     return consent ? JSON.parse(consent) : null;
@@ -443,7 +429,7 @@ export default class UserService extends ApiClientBase
 
   async getUserCountry() {
     const country = await AsyncStorageService.getUserCountry();
-    if (country != null) {
+    if (!!country) {
       UserService.userCountry = country;
       UserService.setLocaleFromCountry(country);
     }
@@ -503,7 +489,7 @@ export default class UserService extends ApiClientBase
     try {
       const response = await AsyncStorageService.getAskedToReportForOthers();
       if (response) {
-        return parseInt(response, 10) < MAX_DISPLAY_REPORT_FOR_OTHER_PROMPT;
+        return cleanIntegerVal(response) < MAX_DISPLAY_REPORT_FOR_OTHER_PROMPT;
       } else {
         await AsyncStorageService.setAskedToReportForOthers('0');
         return true;
@@ -516,7 +502,7 @@ export default class UserService extends ApiClientBase
   public async recordAskedToReportForOther() {
     const response = await AsyncStorageService.getAskedToReportForOthers();
     if (response) {
-      const value = parseInt(response, 10) + 1;
+      const value = cleanIntegerVal(response) + 1;
       await AsyncStorageService.setAskedToReportForOthers(value.toString());
     } else {
       await AsyncStorageService.setAskedToReportForOthers('0');
