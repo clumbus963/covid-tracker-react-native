@@ -9,7 +9,7 @@ import i18n from '../locale/i18n';
 import Navigator from './Navigation';
 import { ScreenParamList } from './ScreenParamList';
 import Splash from '../components/Splash';
-import { offlineService, userService } from '../Services';
+import { offlineService, userService, contentService } from '../Services';
 import { ApiException } from '../core/ApiServiceErrors';
 
 type SplashScreenNavigationProp = StackNavigationProp<ScreenParamList, 'Splash'>;
@@ -123,6 +123,7 @@ export class SplashScreen extends Component<Props, SplashState> {
 
   private updateUserCount = async () => {
     await userService.getStartupInfo();
+    await contentService.init();
   };
 
   private loadUser = async (): Promise<AuthenticatedUser> => {

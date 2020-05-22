@@ -7,3 +7,6 @@ export type PushToken = {
   lastUpdated: string;
   platform: string;
 };
+
+export type CountryCode = 'GB' | 'US' | 'SE';
+export type LanguageCode = 'en' | 'sv' | 'es';
