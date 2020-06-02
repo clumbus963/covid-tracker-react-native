@@ -6,7 +6,7 @@ import PushNotificationService, {
 } from '@covid/core/pushNotifications/PushNotificationService';
 import UserService from '@covid/core/user/UserService';
 
-import AssessmentService, { AssessmentApiClient } from './core/patient/AssessmentService';
+import AssessmentService, { AssessmentApiClient } from './core/assessment/AssessmentService';
 import ExpoPushTokenEnvironment from './core/pushNotifications/expo';
 
 const apiClient = new ApiClient();
