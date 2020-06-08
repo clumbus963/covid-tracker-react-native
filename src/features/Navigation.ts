@@ -1,10 +1,11 @@
-import { userService, assessmentService } from '@covid/Services';
+import { PartialState, NavigationState, CommonActions } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
 import { ConfigType } from '@covid/core/Config';
 import { PatientStateType } from '@covid/core/patient/PatientState';
 import UserService, { isGBCountry, isSECountry, isUSCountry } from '@covid/core/user/UserService';
 import AssessmentCoordinator from '@covid/features/assessment/AssessmentCoordinator';
-import { PartialState, NavigationState, CommonActions } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { userService, assessmentService } from '@covid/Services';
 
 import { ScreenParamList } from './ScreenParamList';
 
@@ -96,16 +97,19 @@ class Navigator {
     return page;
   }
 
-  resetToProfileStartAssessment(currentPatient: PatientStateType) {
-    this.navigation.dispatch((state) => {
-      const profileScreen = state.routes.find((screen) => {
-        return screen.name == 'SelectProfile';
+  resetToProfileStartAssessment(currentPatient?: PatientStateType) {
+    if (!currentPatient) {
+      this.gotoScreen(this.getWelcomeRepeatScreenName());
+    } else {
+      this.navigation.dispatch((state) => {
+        const profileScreen = state.routes.find((screen) => {
+          return screen.name == 'SelectProfile';
+        });
+
+        return CommonActions.navigate({ key: profileScreen!.key });
       });
-
-      return CommonActions.navigate({ key: profileScreen!.key });
-    });
-
-    this.startAssessmentFlow(currentPatient);
+      this.startAssessmentFlow(currentPatient);
+    }
   }
 
   async resetToStartPatientDetails(currentPatient: PatientStateType) {

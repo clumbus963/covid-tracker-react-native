@@ -1,14 +1,16 @@
-import { Header } from '@covid/components/Screen';
-import { BrandedButton, HeaderText, RegularBoldText, RegularText, SecondaryText } from '@covid/components/Text';
-import i18n from '@covid/locale/i18n';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { colors } from '@theme';
 import React, { Component } from 'react';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScreenParamList } from '../../ScreenParamList';
+
 import { chevronLeft } from '@assets';
+import { colors } from '@theme';
+import i18n from '@covid/locale/i18n';
+import { BrandedButton, HeaderText, RegularBoldText, RegularText, SecondaryText } from '@covid/components/Text';
+import { Header } from '@covid/components/Screen';
+
+import { ScreenParamList } from '../../ScreenParamList';
 
 type Props = {
   navigation: StackNavigationProp<ScreenParamList, 'ValidationStudyInfo'>;
@@ -64,7 +66,9 @@ export default class ValidationStudyInfoScreen extends Component<Props, object> 
               onPress={() => {
                 this.props.navigation.navigate('ValidationStudyConsent', {
                   viewOnly: false,
-                  currentPatient: this.props.route.params.currentPatient,
+                  ...(this.props.route.params?.currentPatient && {
+                    currentPatient: this.props.route.params.currentPatient,
+                  }),
                 });
               }}>
               <RegularText style={styles.buttonText}>{i18n.t('validation-study-intro.yes')}</RegularText>
@@ -90,7 +94,6 @@ const styles = StyleSheet.create({
   backIcon: {
     alignSelf: 'flex-start',
     marginTop: 32,
-    rotation: 180,
   },
   header: {
     marginTop: 24,

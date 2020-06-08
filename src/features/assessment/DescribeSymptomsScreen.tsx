@@ -1,4 +1,11 @@
-import { assessmentService } from '@covid/Services';
+import { RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Formik } from 'formik';
+import { Form, Item, Label, Text } from 'native-base';
+import React, { Component } from 'react';
+import { StyleSheet, View } from 'react-native';
+import * as Yup from 'yup';
+
 import DropdownField from '@covid/components/DropdownField';
 import { GenericTextField } from '@covid/components/GenericTextField';
 import ProgressStatus from '@covid/components/ProgressStatus';
@@ -11,13 +18,7 @@ import UserService from '@covid/core/user/UserService';
 import { cleanFloatVal } from '@covid/core/utils/number';
 import AssessmentCoordinator from '@covid/features/assessment/AssessmentCoordinator';
 import i18n from '@covid/locale/i18n';
-import { RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Formik } from 'formik';
-import { Form, Item, Label, Text } from 'native-base';
-import React, { Component } from 'react';
-import { StyleSheet, View } from 'react-native';
-import * as Yup from 'yup';
+import { assessmentService } from '@covid/Services';
 
 import { ScreenParamList } from '../ScreenParamList';
 
@@ -46,7 +47,7 @@ const initialFormValues = {
   hasDelirium: 'no',
   hasEyeSoreness: 'no',
   isSkippingMeals: 'no',
-  typicalHayfever: 'yes',
+  hasUnusualHayfever: 'no',
   otherSymptoms: '',
 };
 
@@ -75,7 +76,7 @@ interface DescribeSymptomsData {
   hasUnusualMusclePains: string;
   isSkippingMeals: string;
   hasEyeSoreness: string;
-  typicalHayfever: string;
+  hasUnusualHayfever: string;
   otherSymptoms: string;
 }
 
@@ -132,7 +133,7 @@ export default class DescribeSymptomsScreen extends Component<SymptomProps, Stat
     hasRedWeltsOnFace: Yup.string().required(),
     hasBlistersOnFeet: Yup.string().required(),
     hasEyeSoreness: Yup.string().required(),
-    typicalHayfever: Yup.string().required(),
+    hasUnusualHayfever: Yup.string().required(),
     otherSymptoms: Yup.string(),
   });
 
@@ -154,6 +155,8 @@ export default class DescribeSymptomsScreen extends Component<SymptomProps, Stat
   }
 
   createAssessmentInfos(formData: DescribeSymptomsData) {
+    const currentPatient = AssessmentCoordinator.assessmentData.currentPatient;
+
     let infos = ({
       fever: formData.hasFever === 'yes',
       chills_or_shivers: formData.hasChills === 'yes',
@@ -204,6 +207,13 @@ export default class DescribeSymptomsScreen extends Component<SymptomProps, Stat
       infos = {
         ...infos,
         diarrhoea_frequency: formData.diarrhoeaFrequency,
+      };
+    }
+
+    if (currentPatient.hasHayfever && formData.hasUnusualHayfever) {
+      infos = {
+        ...infos,
+        typical_hayfever: formData.hasUnusualHayfever === 'no',
       };
     }
 
@@ -445,8 +455,8 @@ export default class DescribeSymptomsScreen extends Component<SymptomProps, Stat
 
                 {currentPatient.hasHayfever && (
                   <DropdownField
-                    selectedValue={props.values.typicalHayfever}
-                    onValueChange={props.handleChange('typicalHayfever')}
+                    selectedValue={props.values.hasUnusualHayfever}
+                    onValueChange={props.handleChange('hasUnusualHayfever')}
                     label={i18n.t('describe-symptoms.question-typical-hayfever')}
                   />
                 )}
